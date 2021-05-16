@@ -6,6 +6,7 @@ from credit_scoring.metrics.credit_score import CreditScore
 
 
 class CalculatedKS(CreditScore):
+
 	def ks(self) -> tuple:
 		'''
 		Calculate the KS table of each decile, KS value, the deicile at KS
@@ -35,9 +36,12 @@ class CalculatedKS(CreditScore):
 		ks_table['events'] = grouped.sum()['target']
 		ks_table['nonevents'] = grouped.sum()['target0']
 
+		# Calculate the cumulative probability of event and non-events in each decile
 		ks_table = ks_table.sort_values(by="min_prob", ascending=False).reset_index(drop=True)
 		ks_table['cum_eventrate'] = (ks_table.events / data['target'].sum()).cumsum()
 		ks_table['cum_noneventrate'] = (ks_table.nonevents / data['target0'].sum()).cumsum()
+
+		# CAlculate the KS by formula
 		ks_table['KS'] = np.round(ks_table['cum_eventrate'] - ks_table['cum_noneventrate'], 3) * 100
 		ks_table.loc[0, 'cum_eventrate'] = ks_table.loc[0, 'cum_noneventrate'] = 0
 		ks_table.index = range(self.bucket)
@@ -46,7 +50,11 @@ class CalculatedKS(CreditScore):
 		ks_val, decile = max(ks_table['KS']), ks_table.index[ks_table['KS'] == max(ks_table['KS'])][0]
 		return ks_table, ks_val, decile
 
-	def plot_ks_chart(self):
+	def plot_ks_chart(self) -> None:
+		"""
+		Plot the KS chart, distribution of cdf of event and non-event
+		:return: None
+		"""
 		data, ks_val, decile = self.ks()
 		text = str(ks_val) + "%" + " at decile " + str(decile)
 		fig = px.line(data, x=data.index, y=['cum_eventrate', 'cum_noneventrate'],
